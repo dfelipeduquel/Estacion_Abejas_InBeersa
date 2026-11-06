@@ -1,6 +1,6 @@
 /**
  * @file sensors.cpp
- * @brief Implementación de drivers de adquisición ambiental y RTC para InBeersa.
+ * @brief Implementación de drivers de adquisición ambiental, gases, RTC y psicrometría (VPD).
  */
 
 #include "sensors.h"
@@ -9,6 +9,7 @@
 #include <Wire.h>
 #include <RTClib.h>
 #include <time.h>
+#include <math.h>
 
 // Instancias de sensores
 static DHT dhtInterno(PIN_DHT_INTERNO, DHT22);
@@ -22,19 +23,20 @@ static const float ALPHA_EMA_GAS = 0.2f;
 // Variables de debounce para interrupciones de hardware
 static volatile unsigned long ultimaInterrupcionPIR = 0;
 static volatile unsigned long ultimaInterrupcionLluvia = 0;
-static const unsigned long DEBOUNCE_PIR_MS = 3000;      // 3 segundos de guarda entre detecciones PIR
-static const unsigned long DEBOUNCE_LLUVIA_MS = 1000;   // 1 segundo de guarda para gotas de lluvia
+static const unsigned long DEBOUNCE_PIR_MS = 2500;      // 2.5s entre detecciones de abejas
+static const unsigned long DEBOUNCE_LLUVIA_MS = 1000;   // 1s para gotas de lluvia
 
 // =============================================================================
-// ISR DE HARDWARE (ULTRA LIGERAS - CERO BLOQUEO)
+// ISR DE HARDWARE (ULTRA LIGERAS)
 // =============================================================================
 void IRAM_ATTR isrPIR() {
     unsigned long tiempoActual = millis();
     if (tiempoActual - ultimaInterrupcionPIR > DEBOUNCE_PIR_MS) {
         ultimaInterrupcionPIR = tiempoActual;
         banderaPIRInterrupcion = true;
+        contadorPIRAcumulado++;
         
-        // Despertar la tarea de bioacústica mediante semáforo de FreeRTOS desde ISR
+        // Despertar tarea de bioacústica mediante semáforo de FreeRTOS
         BaseType_t higherPriorityTaskWoken = pdFALSE;
         if (semaforoGrabacionAudio != nullptr) {
             xSemaphoreGiveFromISR(semaforoGrabacionAudio, &higherPriorityTaskWoken);
@@ -67,10 +69,10 @@ bool inicializarSensores() {
         estadoGlobal = false;
     } else {
         if (!rtc.isrunning()) {
-            Serial.println("[ALERTA] RTC no estaba oscilando. Ajustando a compilación.");
+            Serial.println("[ALERTA] RTC detenido. Sincronizando con tiempo de compilación.");
             rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
         }
-        Serial.println("[OK] RTC DS1307 en línea y sincronizado.");
+        Serial.println("[OK] RTC DS1307 en línea y operativo.");
         setLedErrorRTC(false);
     }
 
@@ -95,7 +97,7 @@ void configurarInterrupcionesHardware() {
     pinMode(PIN_SENSOR_LLUVIA, INPUT_PULLUP);
     attachInterrupt(digitalPinToInterrupt(PIN_SENSOR_LLUVIA), isrLluvia, FALLING);
 
-    Serial.println("[OK] Interrupciones de PIR y Lluvia armadas.");
+    Serial.println("[OK] Interrupciones PIR y Lluvia activas.");
 }
 
 bool leerDHTInterno(float &temp, float &hum) {
@@ -103,7 +105,7 @@ bool leerDHTInterno(float &temp, float &hum) {
     float h = dhtInterno.readHumidity();
 
     if (isnan(t) || isnan(h)) {
-        Serial.println("[ERROR] Fallo de lectura en DHT Interno.");
+        Serial.println("[ERROR] DHT Interno no responde.");
         setLedErrorDHTI(true);
         temp = -200.0f;
         hum = -200.0f;
@@ -121,7 +123,7 @@ bool leerDHTExterno(float &temp, float &hum) {
     float h = dhtExterno.readHumidity();
 
     if (isnan(t) || isnan(h)) {
-        Serial.println("[ERROR] Fallo de lectura en DHT Externo.");
+        Serial.println("[ERROR] DHT Externo no responde.");
         setLedErrorDHTE(true);
         temp = -200.0f;
         hum = -200.0f;
@@ -153,6 +155,17 @@ float leerGasesMQ135() {
     return ema_gas;
 }
 
+float calcularVPD(float temperatura, float humedadRelativa) {
+    if (temperatura < -50.0f || humedadRelativa < 0.0f) {
+        return -1.0f;
+    }
+    // Ecuación de Tetens para presión de vapor de saturación (kPa)
+    float svp = 0.61078f * expf((17.27f * temperatura) / (temperatura + 237.3f));
+    // VPD = SVP * (1 - (HR / 100))
+    float vpd = svp * (1.0f - (humedadRelativa / 100.0f));
+    return (vpd < 0.0f) ? 0.0f : vpd;
+}
+
 bool actualizarHoraRTC(TelemetriaInBeersa &datos) {
     if (!rtc.isrunning()) {
         snprintf(datos.fecha, sizeof(datos.fecha), "Error/Error/Error");
@@ -171,12 +184,12 @@ bool actualizarHoraRTC(TelemetriaInBeersa &datos) {
 }
 
 bool sincronizarRTCPorNTP() {
-    Serial.println("[NTP] Intentando sincronización atómica...");
+    Serial.println("[NTP] Sincronizando RTC con pool.ntp.org...");
     configTime(-5 * 3600, 0, "pool.ntp.org", "time.google.com");
 
     struct tm timeinfo;
     if (!getLocalTime(&timeinfo, 5000)) {
-        Serial.println("[ALERTA] Servidor NTP no respondió. Se preserva hora del RTC.");
+        Serial.println("[ALERTA] Servidor NTP no respondió. Se mantiene hora del RTC.");
         return false;
     }
 
@@ -187,6 +200,6 @@ bool sincronizarRTCPorNTP() {
                         timeinfo.tm_min,
                         timeinfo.tm_sec));
 
-    Serial.println("[OK] RTC sincronizado con servidor NTP (UTC-5 Colombia).");
+    Serial.println("[OK] RTC sincronizado con servidor atómico.");
     return true;
 }

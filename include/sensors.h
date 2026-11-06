@@ -1,6 +1,6 @@
 /**
  * @file sensors.h
- * @brief Capa de drivers para sensores meteorológicos, gases y RTC.
+ * @brief Capa de drivers para sensores meteorológicos, gases, RTC y biometría.
  */
 
 #ifndef SENSORS_H
@@ -14,6 +14,7 @@ bool inicializarSensores();
 bool leerDHTInterno(float &temp, float &hum);
 bool leerDHTExterno(float &temp, float &hum);
 float leerGasesMQ135();
+float calcularVPD(float temperatura, float humedadRelativa);
 bool actualizarHoraRTC(TelemetriaInBeersa &datos);
 bool sincronizarRTCPorNTP();
 void configurarInterrupcionesHardware();

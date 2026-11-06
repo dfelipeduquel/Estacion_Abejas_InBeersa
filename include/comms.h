@@ -1,6 +1,6 @@
 /**
  * @file comms.h
- * @brief Capa de comunicaciones asíncronas WiFi y protocolo MQTT (HiveMQ).
+ * @brief Capa de comunicaciones: WiFi persistente, Ubidots Cloud y Web Server local.
  */
 
 #ifndef COMMS_H
@@ -11,8 +11,10 @@
 #include "config_pins.h"
 
 void inicializarComunicaciones();
-void verificarConectividadWiFi();
-bool publicarTelemetriaMQTT(const TelemetriaInBeersa &datos, char *jsonBufferOut, size_t bufferSize);
-void procesarBucleMQTT();
+void procesarComunicaciones();
+bool publicarUbidotsMQTT(const TelemetriaInBeersa &datos);
+bool publicarHiveMQFallback(const TelemetriaInBeersa &datos, char *jsonBufferOut, size_t bufferSize);
+void atenderServidorWebLocal(const TelemetriaInBeersa &datos);
+String obtenerIPLocal();
 
 #endif // COMMS_H
