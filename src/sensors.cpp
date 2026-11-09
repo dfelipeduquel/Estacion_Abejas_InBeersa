@@ -77,30 +77,51 @@ bool inicializarSensores() {
     }
 
     // 2. Sensores DHT22
-    dhtInterno.begin();
-    dhtExterno.begin();
+    if (HABILITAR_DHT_INTERNO) {
+        dhtInterno.begin();
+    }
+    if (HABILITAR_DHT_EXTERNO) {
+        dhtExterno.begin();
+    }
 
     // 3. ADC para MQ-135
-    analogReadResolution(12);
-    pinMode(PIN_MQ135_GAS, INPUT);
+    if (HABILITAR_MQ135) {
+        analogReadResolution(12);
+        pinMode(PIN_MQ135_GAS, INPUT);
+    }
 
     // 4. Configuración de Interrupciones de Hardware
     configurarInterrupcionesHardware();
+
+    // 5. Limpieza de transitorios iniciales de la fuente de alimentación
+    delay(100);
+    banderaLluviaInterrupcion = false;
+    banderaPIRInterrupcion = false;
 
     return estadoGlobal;
 }
 
 void configurarInterrupcionesHardware() {
-    pinMode(PIN_PIR_MOVIMIENTO, INPUT);
-    attachInterrupt(digitalPinToInterrupt(PIN_PIR_MOVIMIENTO), isrPIR, RISING);
+    if (HABILITAR_PIR) {
+        pinMode(PIN_PIR_MOVIMIENTO, INPUT);
+        attachInterrupt(digitalPinToInterrupt(PIN_PIR_MOVIMIENTO), isrPIR, RISING);
+    }
 
-    pinMode(PIN_SENSOR_LLUVIA, INPUT_PULLUP);
-    attachInterrupt(digitalPinToInterrupt(PIN_SENSOR_LLUVIA), isrLluvia, FALLING);
+    if (HABILITAR_LLUVIA) {
+        pinMode(PIN_SENSOR_LLUVIA, INPUT_PULLUP);
+        attachInterrupt(digitalPinToInterrupt(PIN_SENSOR_LLUVIA), isrLluvia, FALLING);
+    }
 
-    Serial.println("[OK] Interrupciones PIR y Lluvia activas.");
+    Serial.println("[OK] Interrupciones PIR y Lluvia armadas.");
 }
 
 bool leerDHTInterno(float &temp, float &hum) {
+    if (!HABILITAR_DHT_INTERNO) {
+        temp = 0.0f;
+        hum = 0.0f;
+        return false;
+    }
+
     float t = dhtInterno.readTemperature();
     float h = dhtInterno.readHumidity();
 
@@ -119,6 +140,13 @@ bool leerDHTInterno(float &temp, float &hum) {
 }
 
 bool leerDHTExterno(float &temp, float &hum) {
+    if (!HABILITAR_DHT_EXTERNO) {
+        temp = 0.0f;
+        hum = 0.0f;
+        setLedErrorDHTE(false);
+        return false;
+    }
+
     float t = dhtExterno.readTemperature();
     float h = dhtExterno.readHumidity();
 
@@ -137,7 +165,10 @@ bool leerDHTExterno(float &temp, float &hum) {
 }
 
 float leerGasesMQ135() {
-    // Sobremuestreo de 8 lecturas para eliminar ruido eléctrico del ADC SAR1
+    if (!HABILITAR_MQ135) {
+        return 0.0f;
+    }
+
     uint32_t acumulador = 0;
     for (int i = 0; i < 8; i++) {
         acumulador += analogRead(PIN_MQ135_GAS);
@@ -145,7 +176,6 @@ float leerGasesMQ135() {
     }
     float rawPromedio = static_cast<float>(acumulador) / 8.0f;
 
-    // Filtro de Media Móvil Exponencial (EMA)
     if (ema_gas < 0.0f) {
         ema_gas = rawPromedio;
     } else {
@@ -159,9 +189,7 @@ float calcularVPD(float temperatura, float humedadRelativa) {
     if (temperatura < -50.0f || humedadRelativa < 0.0f) {
         return -1.0f;
     }
-    // Ecuación de Tetens para presión de vapor de saturación (kPa)
     float svp = 0.61078f * expf((17.27f * temperatura) / (temperatura + 237.3f));
-    // VPD = SVP * (1 - (HR / 100))
     float vpd = svp * (1.0f - (humedadRelativa / 100.0f));
     return (vpd < 0.0f) ? 0.0f : vpd;
 }

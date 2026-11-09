@@ -1,8 +1,8 @@
 /**
  * @file main.cpp
- * @brief Firmware Principal de la Estación InBeersa (Abejas Angelitas / Melipona eburnea).
+ * @brief Firmware Principal InBeersa v2.2 (Escaneo Diagnóstico, Fallback AP y Soporte de Hardware Activo).
  * @author Daniel Felipe Duque Lizarralde & Kilby Semillero (UTP)
- * @version 2.1.0 (Alimentación Continua 24/7, Ubidots Cloud & LAN Web Dashboard)
+ * @version 2.2.0
  */
 
 #include <Arduino.h>
@@ -32,10 +32,10 @@ static TelemetriaInBeersa telemetriaActual = {};
 
 // Temporizadores no bloqueantes
 static unsigned long ultimoMuestreoMeteorologico = 0;
-static const unsigned long INTERVALO_MUESTREO_MS = 20000; // 20 segundos para monitoreo continuo en vivo
+static const unsigned long INTERVALO_MUESTREO_MS = 20000; // 20 segundos
 
 static unsigned long ultimoAudioNormal = 0;
-static const unsigned long INTERVALO_AUDIO_NORMAL_MS = 300000; // 5 minutos entre capturas de audio de rutina
+static const unsigned long INTERVALO_AUDIO_NORMAL_MS = 300000; // 5 minutos
 
 static unsigned long ultimoLatido = 0;
 static const unsigned long INTERVALO_LATIDO_MS = 1000; // 1 segundo (Heartbeat)
@@ -53,39 +53,57 @@ void ejecutarCicloTelemetria() {
     strncpy(telemetriaActual.colmena, NOMBRE_COLMENA, sizeof(telemetriaActual.colmena) - 1);
     telemetriaActual.uptimeSeg = (millis() - tiempoArranqueMillis) / 1000;
 
-    // 1. Obtener timestamp del RTC
+    // 1. Obtener timestamp del RTC DS1307
     actualizarHoraRTC(telemetriaActual);
 
-    // 2. Adquirir sensores de temperatura y humedad (Interno y Externo)
+    // 2. Adquirir Sensor DHT22 Interno (Nido de Melipona)
     leerDHTInterno(telemetriaActual.tempInterna, telemetriaActual.humInterna);
-    leerDHTExterno(telemetriaActual.tempExterna, telemetriaActual.humExterna);
 
-    // 3. Adquirir sensor de gases MQ-135 con EMA
-    telemetriaActual.cAire = leerGasesMQ135();
-
-    // 4. Cálculo biometeorológico avanzado: VPD y Delta Térmico
+    // 3. Cálculo biometeorológico de VPD
     telemetriaActual.vpdInterno = calcularVPD(telemetriaActual.tempInterna, telemetriaActual.humInterna);
-    telemetriaActual.deltaTemp = telemetriaActual.tempInterna - telemetriaActual.tempExterna;
 
-    // 5. Capturar estado de eventos
+    // 4. Sensores condicionales (solo si están habilitados físicamente)
+    if (HABILITAR_DHT_EXTERNO) {
+        leerDHTExterno(telemetriaActual.tempExterna, telemetriaActual.humExterna);
+        telemetriaActual.deltaTemp = telemetriaActual.tempInterna - telemetriaActual.tempExterna;
+    } else {
+        telemetriaActual.tempExterna = 0.0f;
+        telemetriaActual.humExterna = 0.0f;
+        telemetriaActual.deltaTemp = 0.0f;
+    }
+
+    if (HABILITAR_MQ135) {
+        telemetriaActual.cAire = leerGasesMQ135();
+    } else {
+        telemetriaActual.cAire = 0.0f;
+    }
+
+    // 5. Capturar estado de eventos de interrupción
     telemetriaActual.pirDetectado = banderaPIRInterrupcion ? 1 : 0;
     telemetriaActual.llovio = banderaLluviaInterrupcion ? 1 : 0;
     telemetriaActual.eventosPIRTotal = contadorPIRAcumulado;
 
-    // Diagnóstico en consola serial
-    Serial.printf("[SENSOR] Hora         : %s %s | IP: %s\n", telemetriaActual.fecha, telemetriaActual.hora, obtenerIPLocal().c_str());
-    Serial.printf("[SENSOR] Nido Interno : %.1f C | %.1f %% | VPD: %.2f kPa\n", telemetriaActual.tempInterna, telemetriaActual.humInterna, telemetriaActual.vpdInterno);
-    Serial.printf("[SENSOR] Amb Exterior : %.1f C | %.1f %% | DeltaT: %.1f C\n", telemetriaActual.tempExterna, telemetriaActual.humExterna, telemetriaActual.deltaTemp);
-    Serial.printf("[SENSOR] MQ-135 Gas   : %.1f (EMA)\n", telemetriaActual.cAire);
-    Serial.printf("[SENSOR] Actividad    : PIR=%d (Total: %u) | Lluvia=%d\n", telemetriaActual.pirDetectado, telemetriaActual.eventosPIRTotal, telemetriaActual.llovio);
+    // Diagnóstico limpio en consola
+    Serial.printf("[SENSOR] RTC Hora     : %s %s | Red: %s\n",
+                  telemetriaActual.fecha, telemetriaActual.hora, obtenerIPLocal().c_str());
+    Serial.printf("[SENSOR] Nido Interno : %.1f C | %.1f %% | VPD: %.2f kPa\n",
+                  telemetriaActual.tempInterna, telemetriaActual.humInterna, telemetriaActual.vpdInterno);
 
-    // 6. Actualizar memoria caché para el Dashboard Web local (LAN)
+    if (HABILITAR_DHT_EXTERNO) {
+        Serial.printf("[SENSOR] Amb Exterior : %.1f C | %.1f %% | DeltaT: %.1f C\n",
+                      telemetriaActual.tempExterna, telemetriaActual.humExterna, telemetriaActual.deltaTemp);
+    }
+
+    Serial.printf("[SENSOR] Actividad    : PIR=%d (Total: %u) | Lluvia=%d\n",
+                  telemetriaActual.pirDetectado, telemetriaActual.eventosPIRTotal, telemetriaActual.llovio);
+
+    // 6. Actualizar memoria caché para el Dashboard Web local (LAN / AP)
     atenderServidorWebLocal(telemetriaActual);
 
-    // 7. Enviar a Ubidots Cloud vía MQTT
+    // 7. Enviar a Ubidots Cloud vía MQTT (si hay enlace a internet)
     publicarUbidotsMQTT(telemetriaActual);
 
-    // 8. Generar payload JSON compatible para guardar en MicroSD
+    // 8. Generar payload JSON compatible para guardar en MicroSD / LittleFS
     char bufferJSON[384];
     publicarHiveMQFallback(telemetriaActual, bufferJSON, sizeof(bufferJSON));
     guardarTelemetriaJSON(bufferJSON);
@@ -107,11 +125,11 @@ void setup() {
     tiempoArranqueMillis = millis();
 
     Serial.println("\n*******************************************************");
-    Serial.println("  INBEERSA V2.1: CONTINUA 24/7 + UBIDOTS + DASHBOARD   ");
+    Serial.println("  INBEERSA V2.2: AUTO-FALLBACK AP + ESCANEO DIAGNÓSTICO");
     Serial.println("  Semillero Kilby UTP - Ecosistema TerraBit            ");
     Serial.println("*******************************************************");
 
-    // 1. Inicializar Interfaz HMI y diagnóstico
+    // 1. Inicializar Interfaz HMI y diagnóstico de LEDs
     inicializarHMI();
     secuenciaArranqueLeds();
 
@@ -122,13 +140,13 @@ void setup() {
     // 3. Inicializar Sensores y RTC
     inicializarSensores();
 
-    // 4. Inicializar Periférico I2S y DMA de Audio
+    // 4. Inicializar Periférico I2S y DMA de Audio (Core 1)
     inicializarAudioI2S();
 
-    // 5. Inicializar Almacenamiento Masivo (MicroSD + LittleFS)
+    // 5. Inicializar Almacenamiento Masivo (Auto-detección MicroSD + LittleFS)
     inicializarAlmacenamiento();
 
-    // 6. Inicializar Comunicaciones (WiFi STA "TerraBit" + Ubidots + Web LAN)
+    // 6. Inicializar Comunicaciones (Escaneo 2.4 GHz + WiFi STA "TerraBit" + Fallback AP)
     inicializarComunicaciones();
 
     // 7. Lanzar Tarea de Bioacústica en Core 1 dedicada
@@ -137,7 +155,7 @@ void setup() {
         "TaskAudioI2S",
         8192,
         NULL,
-        2,              // Prioridad alta para no perder muestras DMA
+        2,              // Prioridad 2 para captura I2S sin pérdidas
         NULL,
         1               // Core 1 dedicado al bus I2S
     );
@@ -145,7 +163,7 @@ void setup() {
     // Primer muestreo de arranque
     ejecutarCicloTelemetria();
 
-    Serial.println("[OK] Sistema InBeersa 24/7 en régimen permanente.");
+    Serial.println("[OK] Sistema InBeersa v2.2 listo y en ejecución continua.");
 }
 
 // =============================================================================
