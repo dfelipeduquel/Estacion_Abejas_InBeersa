@@ -1,8 +1,8 @@
 /**
  * @file main.cpp
- * @brief Firmware Principal InBeersa v2.2 (Escaneo Diagnóstico, Fallback AP y Soporte de Hardware Activo).
+ * @brief Firmware Principal InBeersa v2.2 (Escaneo Diagnóstico, Fallback AP y Arquitectura Desacoplada).
  * @author Daniel Felipe Duque Lizarralde & Kilby Semillero (UTP)
- * @version 2.2.0
+ * @version 2.2.1
  */
 
 #include <Arduino.h>
@@ -59,26 +59,21 @@ void ejecutarCicloTelemetria() {
     // 2. Adquirir Sensor DHT22 Interno (Nido de Melipona)
     leerDHTInterno(telemetriaActual.tempInterna, telemetriaActual.humInterna);
 
-    // 3. Cálculo biometeorológico de VPD
-    telemetriaActual.vpdInterno = calcularVPD(telemetriaActual.tempInterna, telemetriaActual.humInterna);
-
-    // 4. Sensores condicionales (solo si están habilitados físicamente)
-    if (HABILITAR_DHT_EXTERNO) {
-        leerDHTExterno(telemetriaActual.tempExterna, telemetriaActual.humExterna);
+    // 3. Adquirir Sensor DHT22 Externo (El driver lo gestiona si está habilitado en config_pins.h)
+    bool extOk = leerDHTExterno(telemetriaActual.tempExterna, telemetriaActual.humExterna);
+    if (extOk) {
         telemetriaActual.deltaTemp = telemetriaActual.tempInterna - telemetriaActual.tempExterna;
     } else {
-        telemetriaActual.tempExterna = 0.0f;
-        telemetriaActual.humExterna = 0.0f;
         telemetriaActual.deltaTemp = 0.0f;
     }
 
-    if (HABILITAR_MQ135) {
-        telemetriaActual.cAire = leerGasesMQ135();
-    } else {
-        telemetriaActual.cAire = 0.0f;
-    }
+    // 4. Adquirir Calidad de Aire MQ-135 (Retorna 0.0f limpio si está deshabilitado en config_pins.h)
+    telemetriaActual.cAire = leerGasesMQ135();
 
-    // 5. Capturar estado de eventos de interrupción
+    // 5. Cálculo biometeorológico de VPD en el Nido
+    telemetriaActual.vpdInterno = calcularVPD(telemetriaActual.tempInterna, telemetriaActual.humInterna);
+
+    // 6. Capturar estado de eventos de interrupción de hardware
     telemetriaActual.pirDetectado = banderaPIRInterrupcion ? 1 : 0;
     telemetriaActual.llovio = banderaLluviaInterrupcion ? 1 : 0;
     telemetriaActual.eventosPIRTotal = contadorPIRAcumulado;
@@ -89,7 +84,7 @@ void ejecutarCicloTelemetria() {
     Serial.printf("[SENSOR] Nido Interno : %.1f C | %.1f %% | VPD: %.2f kPa\n",
                   telemetriaActual.tempInterna, telemetriaActual.humInterna, telemetriaActual.vpdInterno);
 
-    if (HABILITAR_DHT_EXTERNO) {
+    if (extOk) {
         Serial.printf("[SENSOR] Amb Exterior : %.1f C | %.1f %% | DeltaT: %.1f C\n",
                       telemetriaActual.tempExterna, telemetriaActual.humExterna, telemetriaActual.deltaTemp);
     }
@@ -97,18 +92,18 @@ void ejecutarCicloTelemetria() {
     Serial.printf("[SENSOR] Actividad    : PIR=%d (Total: %u) | Lluvia=%d\n",
                   telemetriaActual.pirDetectado, telemetriaActual.eventosPIRTotal, telemetriaActual.llovio);
 
-    // 6. Actualizar memoria caché para el Dashboard Web local (LAN / AP)
+    // 7. Actualizar memoria caché para el Dashboard Web local (LAN / AP)
     atenderServidorWebLocal(telemetriaActual);
 
-    // 7. Enviar a Ubidots Cloud vía MQTT (si hay enlace a internet)
+    // 8. Enviar a Ubidots Cloud vía MQTT (si hay enlace a internet)
     publicarUbidotsMQTT(telemetriaActual);
 
-    // 8. Generar payload JSON compatible para guardar en MicroSD / LittleFS
+    // 9. Generar payload JSON compatible para guardar en MicroSD / LittleFS
     char bufferJSON[384];
     publicarHiveMQFallback(telemetriaActual, bufferJSON, sizeof(bufferJSON));
     guardarTelemetriaJSON(bufferJSON);
 
-    // 9. Limpiar banderas de eventos rápidos para el nuevo periodo
+    // 10. Limpiar banderas de eventos rápidos para el nuevo periodo
     banderaPIRInterrupcion = false;
     banderaLluviaInterrupcion = false;
 

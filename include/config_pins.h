@@ -11,11 +11,11 @@
 // =============================================================================
 // FLAGS DE ACONDICIONAMIENTO DE SENSORES CONECTADOS (HARDWARE REAL)
 // =============================================================================
-#define HABILITAR_DHT_INTERNO  true   // DHT22 Nido Interno (Conectado y Operativo)
-#define HABILITAR_DHT_EXTERNO  false  // Desactivado temporalmente (no conectado físicamente)
-#define HABILITAR_MQ135        false  // Desactivado temporalmente (no conectado físicamente)
-#define HABILITAR_PIR          true   // Sensor PIR Movimiento en Piquera
-#define HABILITAR_LLUVIA       true   // Sensor de Lluvia por Interrupción
+#define HABILITAR_DHT_INTERNO  1   // 1 = Conectado y Operativo
+#define HABILITAR_DHT_EXTERNO  0   // 0 = Desactivado (no conectado físicamente)
+#define HABILITAR_MQ135        0   // 0 = Desactivado (no conectado físicamente)
+#define HABILITAR_PIR          1   // 1 = Sensor PIR Movimiento en Piquera
+#define HABILITAR_LLUVIA       1   // 1 = Sensor de Lluvia por Interrupción
 
 // =============================================================================
 // SENSORES METEOROLÓGICOS Y AMBIENTALES
