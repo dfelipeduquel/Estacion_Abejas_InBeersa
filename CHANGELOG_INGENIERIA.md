@@ -55,5 +55,7 @@
 | `src/comms.cpp` | Sincronización automática NTP $\to$ RTC | Al registrarse el flanco de conexión WiFi con `TerraBit`, se invoca inmediatamente `sincronizarRTCPorNTP()` hacia `pool.ntp.org` / `time.google.com` (UTC-5 Colombia). |
 | `include/config_pins.h` | `DEFAULT_WIFI_POWER = WIFI_POWER_17dBm` | Atenuación suave de potencia RF WiFi (~50 mW) para suprimir picos transitorios de 500 mA y prevenir brownout durante escrituras MicroSD. |
 | `src/main.cpp` | `INTERVALO_MUESTREO_MS = 300000` | Sincronización del ciclo biometeorológico a 5 minutos (288 muestras/día), alineando telemetría ambiental, Ubidots y rutina bioacústica. |
+| `src/comms.cpp` | Dashboard Web Temático & Acciones de Élite | Interfaz embebida en memoria Flash con paleta oro miel/carbón, SoftAP concurrente (`InBeersa-Abejas-192.168.4.1`, pass: `CAMBIAR_CLAVE_AP`), mDNS `http://inbeersa.local`, streaming de `/descargar-datos`, prueba de audio I2S, purga segura de MicroSD y tabla viva de historial. |
+| `src/storage.cpp` | `limpiarRegistrosSD()` y `obtenerUltimosRegistrosJSON()` | Rutinas de lectura segura de cola de registros JSON y reinicialización de almacenamiento. |
 | `src/main.cpp` | Bump a v2.3.0 y actualización de banners | Sincronización de versiones de telemetría y diagnóstico por consola UART. |
 

@@ -8,6 +8,7 @@
 #include <SPI.h>
 #include <SD.h>
 #include <LittleFS.h>
+#include <vector>
 
 static SPIClass spiSD(HSPI);
 static bool sdActiva = false;
@@ -119,4 +120,73 @@ bool guardarTelemetriaJSON(const char *jsonString) {
     }
 
     return exito;
+}
+
+bool limpiarRegistrosSD() {
+    bool ok = false;
+    if (sdActiva) {
+        if (SD.exists("/data.json")) {
+            SD.remove("/data.json");
+        }
+        File f = SD.open("/data.json", FILE_WRITE);
+        if (f) {
+            f.close();
+            Serial.println("[STORAGE] Archivo /data.json reinicializado en MicroSD.");
+            ok = true;
+        }
+        asegurarEstructuraCarpetasSD();
+    }
+    if (littleFsActivo) {
+        if (LittleFS.exists("/telemetria_backup.json")) {
+            LittleFS.remove("/telemetria_backup.json");
+        }
+    }
+    return ok;
+}
+
+String obtenerUltimosRegistrosJSON(size_t maxLineas) {
+    File f;
+    if (sdActiva && SD.exists("/data.json")) {
+        f = SD.open("/data.json", FILE_READ);
+    } else if (littleFsActivo && LittleFS.exists("/telemetria_backup.json")) {
+        f = LittleFS.open("/telemetria_backup.json", FILE_READ);
+    }
+
+    if (!f) {
+        return "[]";
+    }
+
+    size_t tamano = f.size();
+    if (tamano == 0) {
+        f.close();
+        return "[]";
+    }
+
+    // Si el archivo es grande, saltar a los últimos 4 KB para capturar las últimas líneas
+    const size_t VENTANA_LECTURA = 4096;
+    if (tamano > VENTANA_LECTURA) {
+        f.seek(tamano - VENTANA_LECTURA);
+        f.readStringUntil('\n'); // Descartar línea parcial
+    }
+
+    std::vector<String> lineas;
+    while (f.available()) {
+        String linea = f.readStringUntil('\n');
+        linea.trim();
+        if (linea.length() > 5 && linea.startsWith("{") && linea.endsWith("}")) {
+            lineas.push_back(linea);
+            if (lineas.size() > maxLineas) {
+                lineas.erase(lineas.begin());
+            }
+        }
+    }
+    f.close();
+
+    String resultado = "[";
+    for (size_t i = 0; i < lineas.size(); i++) {
+        if (i > 0) resultado += ",";
+        resultado += lineas[i];
+    }
+    resultado += "]";
+    return resultado;
 }

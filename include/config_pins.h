@@ -82,9 +82,9 @@
 #define DEFAULT_WIFI_PASS     "TU_CLAVE_WIFI"
 #define DEFAULT_WIFI_POWER    WIFI_POWER_17dBm  // 17 dBm (~50 mW): Atenúa picos de corriente para evitar brownout en MicroSD
 
-// Access Point de Emergencia (Fallback si el router no autentica)
-#define FALLBACK_AP_SSID      "InBeersa-Auxiliar"
-#define FALLBACK_AP_PASS      "solarpunk2026"
+// Access Point Local de Campo y Mantenimiento (SoftAP con IP en el SSID)
+#define FALLBACK_AP_SSID      "InBeersa-Abejas-192.168.4.1"
+#define FALLBACK_AP_PASS      "CAMBIAR_CLAVE_AP"
 
 // Ubidots Cloud
 #define UBIDOTS_BROKER        "industrial.api.ubidots.com"

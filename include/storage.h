@@ -14,5 +14,7 @@ bool inicializarAlmacenamiento();
 bool esSDDisponible();
 bool guardarTelemetriaJSON(const char *jsonString);
 bool asegurarEstructuraCarpetasSD();
+bool limpiarRegistrosSD();
+String obtenerUltimosRegistrosJSON(size_t maxLineas = 10);
 
 #endif // STORAGE_H
