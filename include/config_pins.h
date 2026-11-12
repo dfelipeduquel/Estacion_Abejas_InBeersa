@@ -15,7 +15,8 @@
 #define HABILITAR_DHT_EXTERNO  0   // 0 = Desactivado (no conectado físicamente)
 #define HABILITAR_MQ135        0   // 0 = Desactivado (no conectado físicamente)
 #define HABILITAR_PIR          1   // 1 = Sensor PIR Movimiento en Piquera
-#define HABILITAR_LLUVIA       1   // 1 = Sensor de Lluvia por Interrupción
+#define HABILITAR_LLUVIA       0   // 0 = Desactivado si J8 está desconectado (GPIO 35 sin pullup interno)
+#define PIR_DISPARA_AUDIO      0   // 0 = Modo Análisis Biológico: PIR cuenta abejas; audio graba cada 5 min (Recomendado)
 
 // =============================================================================
 // SENSORES METEOROLÓGICOS Y AMBIENTALES

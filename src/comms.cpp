@@ -461,13 +461,18 @@ static const char HTML_DASHBOARD[] PROGMEM = R"rawliteral(
                 }
                 let html = '';
                 lista.slice().reverse().forEach(row => {
+                    const temp = (row.TempI !== undefined) ? Number(row.TempI).toFixed(1) : '--';
+                    const hum  = (row.HumedadI !== undefined) ? Number(row.HumedadI).toFixed(1) : '--';
+                    const vpd  = (row.VPD !== undefined) ? Number(row.VPD).toFixed(2) : '--';
+                    const pir  = (row.PIR !== undefined) ? row.PIR : '0';
+                    const luv  = row.Lluvia ? '🌧️ Sí' : '☀️ No';
                     html += `<tr>
                         <td><strong>${row.Hora || '--'}</strong></td>
-                        <td style="color:#fbbf24;">${row.TempI !== undefined ? row.TempI : '--'} °C</td>
-                        <td>${row.HumedadI !== undefined ? row.HumedadI : '--'} %</td>
-                        <td>${row.VPD !== undefined ? row.VPD : '--'} kPa</td>
-                        <td>${row.PIR !== undefined ? row.PIR : '0'}</td>
-                        <td>${row.Lluvia ? '🌧️ Sí' : '☀️ No'}</td>
+                        <td style="color:#fbbf24;">${temp} °C</td>
+                        <td>${hum} %</td>
+                        <td>${vpd} kPa</td>
+                        <td>${pir}</td>
+                        <td>${luv}</td>
                     </tr>`;
                 });
                 tbody.innerHTML = html;
@@ -561,11 +566,17 @@ static void configurarRutasServidorWeb() {
         }
     });
 
-    // 5. Disparo de Prueba Bioacústica Manual (INMP441)
+    // 5. Favicon mudo para evitar errores 404 en consola
+    servidorWeb.on("/favicon.ico", HTTP_GET, []() {
+        servidorWeb.send(204); // No Content
+    });
+
+    // 6. Disparo de Prueba Bioacústica Manual (INMP441 - Bypass de compuerta)
     servidorWeb.on("/api/test-audio", HTTP_ANY, []() {
         if (semaforoGrabacionAudio != nullptr) {
+            banderaAudioManualWeb = true; // Activar bypass de compuerta temporal
             xSemaphoreGive(semaforoGrabacionAudio);
-            servidorWeb.send(200, "application/json", "{\"status\":\"ok\",\"mensaje\":\"Ráfaga bioacústica disparada en Core 1.\"}");
+            servidorWeb.send(200, "application/json", "{\"status\":\"ok\",\"mensaje\":\"Ráfaga bioacústica disparada en Core 1 (Bypass activo).\"}");
         } else {
             servidorWeb.send(500, "application/json", "{\"status\":\"error\",\"mensaje\":\"Semáforo no disponible.\"}");
         }
@@ -718,15 +729,10 @@ bool publicarUbidotsMQTT(const TelemetriaInBeersa &datos) {
     char topic[64];
     snprintf(topic, sizeof(topic), "/v1.6/devices/%s", UBIDOTS_DEVICE_LABEL);
 
-    StaticJsonDocument<384> doc;
-    doc["temperatura_interna"] = round(datos.tempInterna * 10.0f) / 10.0f;
-    doc["humedad_interna"]     = round(datos.humInterna * 10.0f) / 10.0f;
-    doc["vpd_nido"]            = round(datos.vpdInterno * 100.0f) / 100.0f;
-    doc["actividad_pir"]       = datos.pirDetectado;
-    doc["lluvia_evento"]       = datos.llovio;
-
-    char buffer[384];
-    serializeJson(doc, buffer, sizeof(buffer));
+    char buffer[256];
+    snprintf(buffer, sizeof(buffer),
+        "{\"temperatura_interna\":%.1f,\"humedad_interna\":%.1f,\"vpd_nido\":%.2f,\"actividad_pir\":%d,\"lluvia_evento\":%d}",
+        datos.tempInterna, datos.humInterna, datos.vpdInterno, datos.pirDetectado, datos.llovio);
 
     bool ok = mqttClient.publish(topic, buffer);
     if (ok) {
@@ -736,16 +742,10 @@ bool publicarUbidotsMQTT(const TelemetriaInBeersa &datos) {
 }
 
 bool publicarHiveMQFallback(const TelemetriaInBeersa &datos, char *jsonBufferOut, size_t bufferSize) {
-    StaticJsonDocument<384> doc;
-    doc["colmena"]  = datos.colmena;
-    doc["Fecha"]    = datos.fecha;
-    doc["Hora"]     = datos.hora;
-    doc["TempI"]    = round(datos.tempInterna * 10.0f) / 10.0f;
-    doc["HumedadI"] = round(datos.humInterna * 10.0f) / 10.0f;
-    doc["VPD"]      = round(datos.vpdInterno * 100.0f) / 100.0f;
-    doc["PIR"]      = datos.pirDetectado;
-    doc["Lluvia"]   = datos.llovio;
-
-    serializeJson(doc, jsonBufferOut, bufferSize);
+    snprintf(jsonBufferOut, bufferSize,
+        "{\"colmena\":\"%s\",\"Fecha\":\"%s\",\"Hora\":\"%s\",\"TempI\":%.1f,\"HumedadI\":%.1f,\"VPD\":%.2f,\"PIR\":%d,\"Lluvia\":%d}",
+        datos.colmena, datos.fecha, datos.hora,
+        datos.tempInterna, datos.humInterna, datos.vpdInterno,
+        datos.pirDetectado, datos.llovio);
     return true;
 }

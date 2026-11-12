@@ -156,23 +156,29 @@ void tareaProcesamientoAudio(void *pvParameters) {
     static bool primerDisparoAudio = true;
 
     while (true) {
-        // Espera no bloqueante hasta que un semáforo sea liberado (desde la ISR del PIR o temporizador)
+        // Espera no bloqueante hasta que un semáforo sea liberado (desde temporizador, PIR o Dashboard Web)
         if (xSemaphoreTake(semaforoGrabacionAudio, portMAX_DELAY) == pdTRUE) {
             unsigned long ahora = millis();
+            bool esDisparoManual = banderaAudioManualWeb;
+            banderaAudioManualWeb = false; // Consumir bandera manual
 
-            // Compuerta temporal: Cooldown de 5 minutos para evitar ráfagas descontroladas
-            if (!primerDisparoAudio && (ahora - ultimoDisparoAudio < AUDIO_COOLDOWN_MS)) {
+            // Compuerta temporal: Aplica a disparos automáticos. Los manuales desde Web hacen bypass completo.
+            if (!esDisparoManual && !primerDisparoAudio && (ahora - ultimoDisparoAudio < AUDIO_COOLDOWN_MS)) {
                 unsigned long segundosRestantes = (AUDIO_COOLDOWN_MS - (ahora - ultimoDisparoAudio)) / 1000;
                 Serial.printf("[AUDIO] Disparo ignorado por compuerta temporal (Cooldown activo: restan %lu s).\n", segundosRestantes);
                 banderaPIRInterrupcion = false;
                 continue;
             }
 
+            if (esDisparoManual) {
+                Serial.println("[AUDIO] Disparo manual desde Dashboard Web: Bypass de compuerta temporal concedido.");
+            }
+
             primerDisparoAudio = false;
             char timestampBuffer[32];
             snprintf(timestampBuffer, sizeof(timestampBuffer), "%lu", ahora);
 
-            bool disparoEsPIR = banderaPIRInterrupcion;
+            bool disparoEsPIR = (!esDisparoManual && banderaPIRInterrupcion);
             banderaPIRInterrupcion = false;
 
             grabarAudioWAV(disparoEsPIR ? TipoGrabacionAudio::PIR : TipoGrabacionAudio::NORMAL, timestampBuffer);

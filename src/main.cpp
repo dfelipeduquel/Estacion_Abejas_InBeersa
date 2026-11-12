@@ -24,6 +24,7 @@ QueueHandle_t colaTelemetria = nullptr;
 
 volatile bool banderaPIRInterrupcion = false;
 volatile bool banderaLluviaInterrupcion = false;
+volatile bool banderaAudioManualWeb = false;
 volatile uint32_t contadorAudiosPIR = 0;
 volatile uint32_t contadorAudiosNormal = 0;
 volatile uint32_t contadorPIRAcumulado = 0;
@@ -75,7 +76,11 @@ void ejecutarCicloTelemetria() {
 
     // 6. Capturar estado de eventos de interrupción de hardware
     telemetriaActual.pirDetectado = banderaPIRInterrupcion ? 1 : 0;
-    telemetriaActual.llovio = banderaLluviaInterrupcion ? 1 : 0;
+#if HABILITAR_LLUVIA
+    telemetriaActual.llovio = (banderaLluviaInterrupcion && digitalRead(PIN_SENSOR_LLUVIA) == LOW) ? 1 : 0;
+#else
+    telemetriaActual.llovio = 0;
+#endif
     telemetriaActual.eventosPIRTotal = contadorPIRAcumulado;
 
     // Diagnóstico limpio en consola

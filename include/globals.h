@@ -46,6 +46,7 @@ extern QueueHandle_t colaTelemetria;            // Cola de paquetes de telemetr�
 // Banderas atómicas para eventos rápidos desde interrupciones
 extern volatile bool banderaPIRInterrupcion;
 extern volatile bool banderaLluviaInterrupcion;
+extern volatile bool banderaAudioManualWeb;
 extern volatile uint32_t contadorAudiosPIR;
 extern volatile uint32_t contadorAudiosNormal;
 extern volatile uint32_t contadorPIRAcumulado;

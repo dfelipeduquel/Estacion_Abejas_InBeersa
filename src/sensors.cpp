@@ -36,12 +36,14 @@ void IRAM_ATTR isrPIR() {
         banderaPIRInterrupcion = true;
         contadorPIRAcumulado++;
         
-        // Despertar tarea de bioacústica mediante semáforo de FreeRTOS
+#if PIR_DISPARA_AUDIO
+        // Despertar tarea de bioacústica mediante semáforo de FreeRTOS sólo si está activado
         BaseType_t higherPriorityTaskWoken = pdFALSE;
         if (semaforoGrabacionAudio != nullptr) {
             xSemaphoreGiveFromISR(semaforoGrabacionAudio, &higherPriorityTaskWoken);
         }
         portYIELD_FROM_ISR(higherPriorityTaskWoken);
+#endif
     }
 }
 
@@ -103,12 +105,12 @@ bool inicializarSensores() {
 
 void configurarInterrupcionesHardware() {
     if (HABILITAR_PIR) {
-        pinMode(PIN_PIR_MOVIMIENTO, INPUT);
+        pinMode(PIN_PIR_MOVIMIENTO, INPUT_PULLDOWN);
         attachInterrupt(digitalPinToInterrupt(PIN_PIR_MOVIMIENTO), isrPIR, RISING);
     }
 
     if (HABILITAR_LLUVIA) {
-        pinMode(PIN_SENSOR_LLUVIA, INPUT_PULLUP);
+        pinMode(PIN_SENSOR_LLUVIA, INPUT);
         attachInterrupt(digitalPinToInterrupt(PIN_SENSOR_LLUVIA), isrLluvia, FALLING);
     }
 
