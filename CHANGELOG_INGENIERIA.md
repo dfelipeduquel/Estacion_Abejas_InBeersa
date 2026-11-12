@@ -32,13 +32,28 @@
 
 ---
 
-### 3. Matriz de Pines Conciliada (Hardware PCB InBeersa)
-- **PIR Piquera:** GPIO 14 (J1)
-- **Micrófono INMP441 (I2S):** SCK=GPIO 18, WS=GPIO 33, SD=GPIO 27 (J4)
-- **DHT22 Interno (Nido):** GPIO 2 (J5)
-- **DHT22 Externo (Ambiente):** GPIO 23 (J6)
-- **Sensor Lluvia:** GPIO 35 (J8)
-- **Sensor MQ-135 (Gas):** GPIO 34 (ADC1_CH6) (J3)
-- **RTC DS1307 (I2C):** SDA=GPIO 5, SCL=GPIO 4 (Dirección 0x68)
-- **MicroSD (SPI):** MOSI=GPIO 17, MISO=GPIO 16, SCK=GPIO 12, CS=GPIO 13 (J7)
-- **LEDs Diagnóstico:** KeepAlive=GPIO 21, RTC_MAL=GPIO 19, DHTI_MAL=GPIO 22, DHTE_MAL=GPIO 25, SD_MAL=GPIO 32
+## [v2.3.0] - Estabilización Post-Prueba 22h: Desacoplo de Pines, Cooldown Bioacústico, Filtro DHT y Auto-NTP
+
+### 1. Diagnóstico Forense (Prueba de 22 Horas Continua)
+- **Cruce de Pines SPI vs PIR:** En v2.2 `PIN_PIR_MOVIMIENTO` compartía `GPIO 14` con el reloj SPI `PIN_SD_SCK`. A 4 MHz, cada ciclo de escritura disparaba la interrupción `isrPIR` en bucle continuo generando 6,809 grabaciones de audio WAV innecesarias (2.18 GB).
+- **Cruce de Pines I2S INMP441:** El micrófono digital presentaba pines invertidos en cabecera (`SD=27`, `WS=33`) y colisión con `PIN_LED_SD_MAL=32`.
+- **Anomalías en Bus 1-Wire DHT22:** Se registraron 5 muestras atípicas (-200.0°C) por timeout de respuesta en 3,211 lecturas (99.84% confiabilidad).
+- **Desfase Temporal del RTC DS1307:** Deriva horaria acumulativa por falta de auto-sincronización atómica.
+
+---
+
+### 2. Correcciones Implementadas en Silicio y Firmware
+
+| Módulo / Archivo | Cambio Realizado | Justificación de Ingeniería |
+|---|---|---|
+| `include/config_pins.h` | `PIN_PIR_MOVIMIENTO = 27` | Desacopla la interrupción del PIR del reloj SPI SCK (GPIO 14), erradicando los falsos positivos por diafonía y actividad de bus. |
+| `include/config_pins.h` | `PIN_I2S_SCK = 18`<br/>`PIN_I2S_WS = 32`<br/>`PIN_I2S_SD = 26` | Conciliación definitiva con el ruteo físico de la PCB InBeersa (J4) para captura PCM 32-bit @ 16 kHz. |
+| `include/config_pins.h` | `PIN_LED_SD_MAL = 33` | Reubicación preventiva del LED de fallo MicroSD para liberar GPIO 32 al reloj Word Select (WS) de audio. |
+| `include/config_pins.h` | `#define AUDIO_COOLDOWN_MS 300000` | Definición de constante de enfriamiento (5 min = 300 s) para la compuerta temporal bioacústica. |
+| `src/audio_i2s.cpp` | Compuerta temporal en `tareaProcesamientoAudio` | Implementación de dead-time no bloqueante de 5 minutos mediante `millis()`. Descarta disparos repetitivos del PIR durante ventanas activas sin bloquear el Core 1. |
+| `src/sensors.cpp` | Filtro de retención en `leerDHTInterno` y `leerDHTExterno` | Si el sensor retorna `NaN`, `-200.0°C` o valores fuera de rango físico, se retiene el último valor válido (con semilla segura $25^\circ\text{C}$ / $75\%$), protegiendo el cálculo de VPD y `/data.json`. |
+| `src/comms.cpp` | Sincronización automática NTP $\to$ RTC | Al registrarse el flanco de conexión WiFi con `TerraBit`, se invoca inmediatamente `sincronizarRTCPorNTP()` hacia `pool.ntp.org` / `time.google.com` (UTC-5 Colombia). |
+| `include/config_pins.h` | `DEFAULT_WIFI_POWER = WIFI_POWER_17dBm` | Atenuación suave de potencia RF WiFi (~50 mW) para suprimir picos transitorios de 500 mA y prevenir brownout durante escrituras MicroSD. |
+| `src/main.cpp` | `INTERVALO_MUESTREO_MS = 300000` | Sincronización del ciclo biometeorológico a 5 minutos (288 muestras/día), alineando telemetría ambiental, Ubidots y rutina bioacústica. |
+| `src/main.cpp` | Bump a v2.3.0 y actualización de banners | Sincronización de versiones de telemetría y diagnóstico por consola UART. |
+

@@ -1,8 +1,8 @@
 /**
  * @file main.cpp
- * @brief Firmware Principal InBeersa v2.2 (Escaneo Diagnóstico, Fallback AP y Arquitectura Desacoplada).
+ * @brief Firmware Principal InBeersa v2.3 (Compuerta Bioacústica, Filtro DHT22, Auto-NTP y Reasignación de Pines).
  * @author Daniel Felipe Duque Lizarralde & Kilby Semillero (UTP)
- * @version 2.2.1
+ * @version 2.3.0
  */
 
 #include <Arduino.h>
@@ -32,10 +32,10 @@ static TelemetriaInBeersa telemetriaActual = {};
 
 // Temporizadores no bloqueantes
 static unsigned long ultimoMuestreoMeteorologico = 0;
-static const unsigned long INTERVALO_MUESTREO_MS = 20000; // 20 segundos
+static const unsigned long INTERVALO_MUESTREO_MS = 300000; // 5 minutos (300 s) para cadencia biometeorológica uniforme
 
 static unsigned long ultimoAudioNormal = 0;
-static const unsigned long INTERVALO_AUDIO_NORMAL_MS = 300000; // 5 minutos
+static const unsigned long INTERVALO_AUDIO_NORMAL_MS = 300000; // 5 minutos (300 s) de rutina acústica
 
 static unsigned long ultimoLatido = 0;
 static const unsigned long INTERVALO_LATIDO_MS = 1000; // 1 segundo (Heartbeat)
@@ -120,7 +120,7 @@ void setup() {
     tiempoArranqueMillis = millis();
 
     Serial.println("\n*******************************************************");
-    Serial.println("  INBEERSA V2.2: AUTO-FALLBACK AP + ESCANEO DIAGNÓSTICO");
+    Serial.println("  INBEERSA V2.3: BIOACÚSTICA + FILTRO DHT22 + NTP RTC ");
     Serial.println("  Semillero Kilby UTP - Ecosistema TerraBit            ");
     Serial.println("*******************************************************");
 
@@ -158,7 +158,7 @@ void setup() {
     // Primer muestreo de arranque
     ejecutarCicloTelemetria();
 
-    Serial.println("[OK] Sistema InBeersa v2.2 listo y en ejecución continua.");
+    Serial.println("[OK] Sistema InBeersa v2.3 listo y en ejecución continua.");
 }
 
 // =============================================================================

@@ -29,18 +29,19 @@
 // BIOACÚSTICA - MICRÓFONO DIGITAL I2S (INMP441)
 // =============================================================================
 #define PIN_I2S_SCK          18    // BCLK
-#define PIN_I2S_WS           33    // LRCLK / Word Select
-#define PIN_I2S_SD           27    // DOUT
+#define PIN_I2S_WS           32    // LRCLK / Word Select (Corregido v2.3)
+#define PIN_I2S_SD           26    // DOUT / Data In (Corregido v2.3)
 
 #define AUDIO_SAMPLE_RATE     16000  // 16 kHz
 #define AUDIO_DURATION_SEC    5      // 5 segundos de ráfaga
 #define AUDIO_DMA_BUF_COUNT   8
 #define AUDIO_DMA_BUF_LEN     1024
+#define AUDIO_COOLDOWN_MS     300000 // 5 minutos de compuerta temporal (dead-time)
 
 // =============================================================================
 // DETECCIÓN BIOLÓGICA - PIR (MOVIMIENTO EN PIQUERA)
 // =============================================================================
-#define PIN_PIR_MOVIMIENTO   14    // J1
+#define PIN_PIR_MOVIMIENTO   27    // J1 (Corregido v2.3: antes 14 colisionaba con SCK SPI)
 
 // =============================================================================
 // RELOJ DE TIEMPO REAL (RTC DS1307) POR I2C
@@ -72,13 +73,14 @@
 #define PIN_LED_RTC_MAL      19    // LED fallo RTC
 #define PIN_LED_DHTI_MAL     22    // LED fallo DHT Interno
 #define PIN_LED_DHTE_MAL     25    // LED fallo DHT Externo
-#define PIN_LED_SD_MAL       32    // LED fallo MicroSD
+#define PIN_LED_SD_MAL       33    // LED fallo MicroSD (Reubicado de 32 a 33 para evitar cruce con WS I2S)
 
 // =============================================================================
 // PARÁMETROS DE RED WIFI (RED LOCAL "TerraBit") & MODO AUXILIAR
 // =============================================================================
 #define DEFAULT_WIFI_SSID     "TerraBit"
 #define DEFAULT_WIFI_PASS     "TU_CLAVE_WIFI"
+#define DEFAULT_WIFI_POWER    WIFI_POWER_17dBm  // 17 dBm (~50 mW): Atenúa picos de corriente para evitar brownout en MicroSD
 
 // Access Point de Emergencia (Fallback si el router no autentica)
 #define FALLBACK_AP_SSID      "InBeersa-Auxiliar"

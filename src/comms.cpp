@@ -4,6 +4,7 @@
  */
 
 #include "comms.h"
+#include "sensors.h"
 #include <WiFi.h>
 #include <WebServer.h>
 #include <PubSubClient.h>
@@ -187,7 +188,7 @@ void inicializarComunicaciones() {
     delay(100);
     WiFi.mode(WIFI_STA);
     delay(100);
-    WiFi.setTxPower(WIFI_POWER_19_5dBm);
+    WiFi.setTxPower(DEFAULT_WIFI_POWER);
     WiFi.begin(DEFAULT_WIFI_SSID, DEFAULT_WIFI_PASS);
 
     // 3. Servidor MQTT Ubidots
@@ -218,8 +219,11 @@ void procesarComunicaciones() {
     // 1. Atender peticiones del servidor web (tanto en LAN como en AP)
     servidorWeb.handleClient();
 
+    static bool wifiConectadoPrevio = false;
+
     // 2. Gestión de reconexión WiFi en modo STA
     if (WiFi.status() != WL_CONNECTED) {
+        wifiConectadoPrevio = false;
         unsigned long ahora = millis();
         if (ahora - ultimoIntentoWiFi >= REINTENTO_WIFI_MS) {
             ultimoIntentoWiFi = ahora;
@@ -237,11 +241,16 @@ void procesarComunicaciones() {
         return;
     }
 
-    // Si ya conectó a TerraBit exitosamente:
-    if (intentosFallidosConexion > 0) {
+    // Flanco de conexión: disparar acciones una sola vez al enlazar a la red WiFi
+    if (!wifiConectadoPrevio) {
+        wifiConectadoPrevio = true;
         intentosFallidosConexion = 0;
         Serial.printf("[WiFi] Conectado exitosamente a '%s'! IP asignada: %s\n",
                       DEFAULT_WIFI_SSID, WiFi.localIP().toString().c_str());
+
+        // Automatización NTP: Sincronizar RTC DS1307 al enlazar a WiFi
+        Serial.println("[NTP] Enlace WiFi detectado. Sincronizando RTC DS1307 con servidores de tiempo...");
+        sincronizarRTCPorNTP();
     }
 
     // 3. Loop MQTT Ubidots

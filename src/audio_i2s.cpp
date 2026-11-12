@@ -150,15 +150,35 @@ bool grabarAudioWAV(TipoGrabacionAudio tipo, const char *fechaHoraStr) {
 // Tarea concurrente FreeRTOS en Core 1
 void tareaProcesamientoAudio(void *pvParameters) {
     (void)pvParameters;
-    Serial.println("[FreeRTOS] Tarea de Bioacústica anclada a Core 1 lista.");
+    Serial.println("[FreeRTOS] Tarea de Bioacústica anclada a Core 1 lista (Compuerta: 5 min).");
+
+    static unsigned long ultimoDisparoAudio = 0;
+    static bool primerDisparoAudio = true;
 
     while (true) {
         // Espera no bloqueante hasta que un semáforo sea liberado (desde la ISR del PIR o temporizador)
         if (xSemaphoreTake(semaforoGrabacionAudio, portMAX_DELAY) == pdTRUE) {
+            unsigned long ahora = millis();
+
+            // Compuerta temporal: Cooldown de 5 minutos para evitar ráfagas descontroladas
+            if (!primerDisparoAudio && (ahora - ultimoDisparoAudio < AUDIO_COOLDOWN_MS)) {
+                unsigned long segundosRestantes = (AUDIO_COOLDOWN_MS - (ahora - ultimoDisparoAudio)) / 1000;
+                Serial.printf("[AUDIO] Disparo ignorado por compuerta temporal (Cooldown activo: restan %lu s).\n", segundosRestantes);
+                banderaPIRInterrupcion = false;
+                continue;
+            }
+
+            primerDisparoAudio = false;
             char timestampBuffer[32];
-            snprintf(timestampBuffer, sizeof(timestampBuffer), "%lu", millis());
-            grabarAudioWAV(banderaPIRInterrupcion ? TipoGrabacionAudio::PIR : TipoGrabacionAudio::NORMAL, timestampBuffer);
+            snprintf(timestampBuffer, sizeof(timestampBuffer), "%lu", ahora);
+
+            bool disparoEsPIR = banderaPIRInterrupcion;
             banderaPIRInterrupcion = false;
+
+            grabarAudioWAV(disparoEsPIR ? TipoGrabacionAudio::PIR : TipoGrabacionAudio::NORMAL, timestampBuffer);
+
+            // Actualizar marca de tiempo tras la ráfaga para garantizar ventana de enfriamiento de 5 min
+            ultimoDisparoAudio = millis();
         }
     }
 }

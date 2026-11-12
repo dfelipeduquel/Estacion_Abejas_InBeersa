@@ -115,6 +115,12 @@ void configurarInterrupcionesHardware() {
     Serial.println("[OK] Interrupciones PIR y Lluvia armadas.");
 }
 
+// Variables de retención para filtrado de lecturas atípicas del DHT22 (semillas agronómicas iniciales)
+static float ultimaTempInternaValida = 25.0f; // Temperatura típica de termorregulación en nido Melipona
+static float ultimaHumInternaValida  = 75.0f; // Humedad relativa estándar en cámara de cría
+static float ultimaTempExternaValida = 24.0f; // Ambiente base
+static float ultimaHumExternaValida  = 70.0f;
+
 bool leerDHTInterno(float &temp, float &hum) {
     if (!HABILITAR_DHT_INTERNO) {
         temp = 0.0f;
@@ -125,14 +131,18 @@ bool leerDHTInterno(float &temp, float &hum) {
     float t = dhtInterno.readTemperature();
     float h = dhtInterno.readHumidity();
 
-    if (isnan(t) || isnan(h)) {
-        Serial.println("[ERROR] DHT Interno no responde.");
+    // Filtro de software: Retener último valor válido ante NaN o lecturas fuera de rango físico
+    if (isnan(t) || isnan(h) || t < -40.0f || t > 80.0f || h < 0.0f || h > 100.0f) {
+        Serial.printf("[FILTRO-DHT] Lectura anómala interna descartada (t=%.1f, h=%.1f). Reteniendo: %.1f C, %.1f %%\n",
+                      t, h, ultimaTempInternaValida, ultimaHumInternaValida);
         setLedErrorDHTI(true);
-        temp = -200.0f;
-        hum = -200.0f;
+        temp = ultimaTempInternaValida;
+        hum = ultimaHumInternaValida;
         return false;
     }
 
+    ultimaTempInternaValida = t;
+    ultimaHumInternaValida = h;
     temp = t;
     hum = h;
     setLedErrorDHTI(false);
@@ -150,14 +160,18 @@ bool leerDHTExterno(float &temp, float &hum) {
     float t = dhtExterno.readTemperature();
     float h = dhtExterno.readHumidity();
 
-    if (isnan(t) || isnan(h)) {
-        Serial.println("[ERROR] DHT Externo no responde.");
+    // Filtro de software: Retener último valor válido ante anomalías
+    if (isnan(t) || isnan(h) || t < -40.0f || t > 80.0f || h < 0.0f || h > 100.0f) {
+        Serial.printf("[FILTRO-DHT] Lectura anómala externa descartada (t=%.1f, h=%.1f). Reteniendo: %.1f C, %.1f %%\n",
+                      t, h, ultimaTempExternaValida, ultimaHumExternaValida);
         setLedErrorDHTE(true);
-        temp = -200.0f;
-        hum = -200.0f;
+        temp = ultimaTempExternaValida;
+        hum = ultimaHumExternaValida;
         return false;
     }
 
+    ultimaTempExternaValida = t;
+    ultimaHumExternaValida = h;
     temp = t;
     hum = h;
     setLedErrorDHTE(false);
