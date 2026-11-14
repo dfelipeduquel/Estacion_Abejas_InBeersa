@@ -3,10 +3,7 @@
 ## 1. Identidad del Proyecto y Ubicación
 - **Nombre:** Estación de Monitoreo Bioacústico y Bioclimático InBeersa (*Melipona eburnea*)
 - **Semillero / Entidad:** Semillero Kilby — Universidad Tecnológica de Pereira (UTP)
-- **Repositorio Local Oficial:** `<RUTA_LOCAL>`
-- **Workspace VS Code:** `<RUTA_LOCAL>`
-- **Remoto GitHub:** `https://github.com/dfelipeduquel/Estacion_Abejas_InBeersa.git` (Rama `main`, commit `6e5b634`)
-- **Acceso Directo en Documentos:** `<RUTA_LOCAL> ESTACIONES & DESARROLLO\InBeersa - Abejas Angelitas (Kilby UTP)`
+- **Repositorio GitHub:** `https://github.com/dfelipeduquel/Estacion_Abejas_InBeersa.git`
 
 ---
 

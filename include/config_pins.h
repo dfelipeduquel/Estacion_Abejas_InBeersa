@@ -8,6 +8,22 @@
 
 #include <Arduino.h>
 
+// Versión unificada del firmware
+#define FIRMWARE_VERSION "2.3.2"
+
+#if __has_include("secrets.h")
+    #include "secrets.h"
+#else
+    #warning "include/secrets.h no encontrado. Usando valores plantilla; copie include/secrets.h.example a include/secrets.h"
+    #define SECRET_WIFI_SSID       "TU_RED_WIFI"
+    #define SECRET_WIFI_PASS       "TU_CLAVE_WIFI"
+    #define SECRET_AP_SSID         "InBeersa-Abejas-192.168.4.1"
+    #define SECRET_AP_PASS         "CAMBIAR_CLAVE_AP"
+    #define SECRET_UBIDOTS_TOKEN   "BBUS-TU_TOKEN_DE_UBIDOTS"
+    #define SECRET_UBIDOTS_DEVICE  "inbeersa-nodo01"
+    #define SECRET_NOMBRE_COLMENA  "Colmena InBeersa 01"
+#endif
+
 // =============================================================================
 // FLAGS DE ACONDICIONAMIENTO DE SENSORES CONECTADOS (HARDWARE REAL)
 // =============================================================================
@@ -77,27 +93,27 @@
 #define PIN_LED_SD_MAL       33    // LED fallo MicroSD (Reubicado de 32 a 33 para evitar cruce con WS I2S)
 
 // =============================================================================
-// PARÁMETROS DE RED WIFI (RED LOCAL "TerraBit") & MODO AUXILIAR
+// PARÁMETROS DE RED WIFI & MODO AUXILIAR (Cargados desde include/secrets.h)
 // =============================================================================
-#define DEFAULT_WIFI_SSID     "TerraBit"
-#define DEFAULT_WIFI_PASS     "TU_CLAVE_WIFI"
+#define DEFAULT_WIFI_SSID     SECRET_WIFI_SSID
+#define DEFAULT_WIFI_PASS     SECRET_WIFI_PASS
 #define DEFAULT_WIFI_POWER    WIFI_POWER_17dBm  // 17 dBm (~50 mW): Atenúa picos de corriente para evitar brownout en MicroSD
 
 // Access Point Local de Campo y Mantenimiento (SoftAP con IP en el SSID)
-#define FALLBACK_AP_SSID      "InBeersa-Abejas-192.168.4.1"
-#define FALLBACK_AP_PASS      "CAMBIAR_CLAVE_AP"
+#define FALLBACK_AP_SSID      SECRET_AP_SSID
+#define FALLBACK_AP_PASS      SECRET_AP_PASS
 
 // Ubidots Cloud
 #define UBIDOTS_BROKER        "industrial.api.ubidots.com"
 #define UBIDOTS_PORT          1883
-#define UBIDOTS_TOKEN         "BBUS-TU_TOKEN_DE_UBIDOTS"
-#define UBIDOTS_DEVICE_LABEL  "inbeersa-nodo01"
+#define UBIDOTS_TOKEN         SECRET_UBIDOTS_TOKEN
+#define UBIDOTS_DEVICE_LABEL  SECRET_UBIDOTS_DEVICE
 
 // HiveMQ Broker Legacy
 #define HIVEMQ_BROKER         "broker.hivemq.com"
 #define HIVEMQ_PORT           1883
 #define HIVEMQ_TOPIC          "ProyectoMeliponas/topic"
 
-#define NOMBRE_COLMENA        "Colmena Villagarzon 2/1"
+#define NOMBRE_COLMENA        SECRET_NOMBRE_COLMENA
 
 #endif // CONFIG_PINS_H

@@ -125,7 +125,7 @@ void setup() {
     tiempoArranqueMillis = millis();
 
     Serial.println("\n*******************************************************");
-    Serial.println("  INBEERSA V2.3: BIOACÚSTICA + FILTRO DHT22 + NTP RTC ");
+    Serial.printf("  INBEERSA v%s: BIOACUSTICA + FILTRO DHT22 + NTP RTC\n", FIRMWARE_VERSION);
     Serial.println("  Semillero Kilby UTP - Ecosistema TerraBit            ");
     Serial.println("*******************************************************");
 
@@ -146,7 +146,7 @@ void setup() {
     // 5. Inicializar Almacenamiento Masivo (Auto-detección MicroSD + LittleFS)
     inicializarAlmacenamiento();
 
-    // 6. Inicializar Comunicaciones (Escaneo 2.4 GHz + WiFi STA "TerraBit" + Fallback AP)
+    // 6. Inicializar Comunicaciones (Escaneo 2.4 GHz + WiFi STA + Fallback AP)
     inicializarComunicaciones();
 
     // 7. Lanzar Tarea de Bioacústica en Core 1 dedicada
@@ -163,7 +163,7 @@ void setup() {
     // Primer muestreo de arranque
     ejecutarCicloTelemetria();
 
-    Serial.println("[OK] Sistema InBeersa v2.3 listo y en ejecución continua.");
+    Serial.printf("[OK] Sistema InBeersa v%s listo y en ejecucion continua.\n", FIRMWARE_VERSION);
 }
 
 // =============================================================================

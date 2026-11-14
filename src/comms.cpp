@@ -47,7 +47,7 @@ void escanearRedesWiFiDiagnostico() {
     if (n == 0) {
         Serial.println("[WiFi-SCAN] ¡ADVERTENCIA! No se detectaron redes en 2.4 GHz.");
     } else {
-        bool encontradaTerraBit = false;
+        bool redObjetivoEncontrada = false;
         for (int i = 0; i < n; ++i) {
             String ssid = WiFi.SSID(i);
             int32_t rssi = WiFi.RSSI(i);
@@ -66,12 +66,12 @@ void escanearRedesWiFiDiagnostico() {
                           i + 1, ssid.c_str(), rssi, canal, authStr);
 
             if (ssid == DEFAULT_WIFI_SSID) {
-                encontradaTerraBit = true;
+                redObjetivoEncontrada = true;
                 Serial.printf("  >>> RED OBJETIVO '%s' DETECTADA con senal: %d dBm en canal %d <<<\n",
                               DEFAULT_WIFI_SSID, rssi, canal);
             }
         }
-        if (!encontradaTerraBit) {
+        if (!redObjetivoEncontrada) {
             Serial.printf("[WiFi-SCAN] ALERTA: La red '%s' NO fue vista en el escaneo 2.4 GHz.\n", DEFAULT_WIFI_SSID);
         }
     }
@@ -407,7 +407,7 @@ static const char HTML_DASHBOARD[] PROGMEM = R"rawliteral(
 
         <!-- Footer -->
         <div class="footer">
-            InBeersa v2.3.0 • Ecosistema TerraBit & Semillero Kilby (UTP Pereira) • 2026
+            InBeersa v%VERSION% • Ecosistema TerraBit & Semillero Kilby (UTP Pereira) • 2026
         </div>
     </div>
 
@@ -503,6 +503,7 @@ static String generarDashboardHTML() {
 
     html.replace("%SSID_AP%", FALLBACK_AP_SSID);
     html.replace("%PASS_AP%", FALLBACK_AP_PASS);
+    html.replace("%VERSION%", FIRMWARE_VERSION);
 
     if (WiFi.status() == WL_CONNECTED) {
         html.replace("%IP_LAN%", WiFi.localIP().toString());
@@ -582,19 +583,19 @@ static void configurarRutasServidorWeb() {
         }
     });
 
-    // 6. Forzar Sincronización NTP
+    // 7. Forzar Sincronización NTP
     servidorWeb.on("/api/sync-ntp", HTTP_ANY, []() {
         bool ok = sincronizarRTCPorNTP();
         servidorWeb.send(200, "application/json", ok ? "{\"status\":\"ok\",\"mensaje\":\"RTC sincronizado con hora atómica.\"}" : "{\"status\":\"error\",\"mensaje\":\"Servidor NTP no respondió.\"}");
     });
 
-    // 7. Purgar / Limpiar MicroSD
+    // 8. Purgar / Limpiar MicroSD
     servidorWeb.on("/api/limpiar-sd", HTTP_ANY, []() {
         bool ok = limpiarRegistrosSD();
         servidorWeb.send(200, "application/json", ok ? "{\"status\":\"ok\",\"mensaje\":\"MicroSD purgada. Archivo data.json reinicializado.\"}" : "{\"status\":\"error\",\"mensaje\":\"Error al purgar MicroSD.\"}");
     });
 
-    // 8. Reinicio Remoto de la Estación
+    // 9. Reinicio Remoto de la Estación
     servidorWeb.on("/api/reiniciar", HTTP_ANY, []() {
         servidorWeb.send(200, "application/json", "{\"status\":\"ok\",\"mensaje\":\"Reiniciando estación InBeersa...\"}");
         delay(600);
@@ -606,7 +607,7 @@ static void configurarRutasServidorWeb() {
 // INICIALIZACIÓN Y GESTIÓN DE CONECTIVIDAD
 // =============================================================================
 static void activarModoFallbackAP() {
-    Serial.println("\n[AP-FALLBACK] Router TerraBit fuera de alcance. Hotspot local operativo.");
+    Serial.printf("\n[AP-FALLBACK] Red '%s' fuera de alcance. Hotspot local operativo.\n", DEFAULT_WIFI_SSID);
 }
 
 void inicializarComunicaciones() {
@@ -630,7 +631,7 @@ void inicializarComunicaciones() {
     Serial.printf("[AP-LOCAL] IP Directa Móvil  : http://%s/\n", WiFi.softAPIP().toString().c_str());
     Serial.println("[AP-LOCAL] ===================================================\n");
 
-    // Conectar a red WiFi local (TerraBit)
+    // Conectar a red WiFi local (STA)
     WiFi.setTxPower(DEFAULT_WIFI_POWER);
     WiFi.begin(DEFAULT_WIFI_SSID, DEFAULT_WIFI_PASS);
 

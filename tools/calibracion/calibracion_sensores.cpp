@@ -10,20 +10,10 @@
  *
  * INSTRUCCIONES DE USO:
  * -----------------------------------------------------------------------------
- * 1. En platformio.ini, cambiar la línea `src_dir` a la carpeta CALIBRACION:
- *       [env:calibracion]
- *       platform = espressif32
- *       board = esp32dev
- *       framework = arduino
- *       build_unflags = -std=gnu++11
- *       build_flags = -std=gnu++17
- *       monitor_speed = 115200
- *       upload_speed = 115200
- *       build_src_filter = -<*> +<../CALIBRACION/calibracion_sensores.cpp>
- *
+ * 1. El entorno [env:calibracion] ya está definido en platformio.ini.
  * 2. Compilar y subir con: pio run -e calibracion --target upload
- * 3. Abrir Monitor Serial a 115200 baud
- * 4. Seguir el menú interactivo via serial
+ * 3. Abrir Monitor Serial a 115200 baud: pio device monitor -e calibracion
+ * 4. Seguir el menú interactivo via serial.
  *
  * HARDWARE REQUERIDO:
  * -----------------------------------------------------------------------------

@@ -52,10 +52,10 @@
 | `include/config_pins.h` | `#define AUDIO_COOLDOWN_MS 300000` | Definición de constante de enfriamiento (5 min = 300 s) para la compuerta temporal bioacústica. |
 | `src/audio_i2s.cpp` | Compuerta temporal en `tareaProcesamientoAudio` | Implementación de dead-time no bloqueante de 5 minutos mediante `millis()`. Descarta disparos repetitivos del PIR durante ventanas activas sin bloquear el Core 1. |
 | `src/sensors.cpp` | Filtro de retención en `leerDHTInterno` y `leerDHTExterno` | Si el sensor retorna `NaN`, `-200.0°C` o valores fuera de rango físico, se retiene el último valor válido (con semilla segura $25^\circ\text{C}$ / $75\%$), protegiendo el cálculo de VPD y `/data.json`. |
-| `src/comms.cpp` | Sincronización automática NTP $\to$ RTC | Al registrarse el flanco de conexión WiFi con `TerraBit`, se invoca inmediatamente `sincronizarRTCPorNTP()` hacia `pool.ntp.org` / `time.google.com` (UTC-5 Colombia). |
+| `src/comms.cpp` | Sincronización automática NTP $\to$ RTC | Al registrarse el flanco de conexión WiFi STA, se invoca inmediatamente `sincronizarRTCPorNTP()` hacia `pool.ntp.org` / `time.google.com` (UTC-5 Colombia). |
 | `include/config_pins.h` | `DEFAULT_WIFI_POWER = WIFI_POWER_17dBm` | Atenuación suave de potencia RF WiFi (~50 mW) para suprimir picos transitorios de 500 mA y prevenir brownout durante escrituras MicroSD. |
 | `src/main.cpp` | `INTERVALO_MUESTREO_MS = 300000` | Sincronización del ciclo biometeorológico a 5 minutos (288 muestras/día), alineando telemetría ambiental, Ubidots y rutina bioacústica. |
-| `src/comms.cpp` | Dashboard Web Temático & Acciones de Élite | Interfaz embebida en memoria Flash con paleta oro miel/carbón, SoftAP concurrente (`InBeersa-Abejas-192.168.4.1`, pass: `CAMBIAR_CLAVE_AP`), mDNS `http://inbeersa.local`, streaming de `/descargar-datos`, prueba de audio I2S, purga segura de MicroSD y tabla viva de historial. |
+| `src/comms.cpp` | Dashboard Web Temático & Acciones de Élite | Interfaz embebida en memoria Flash con paleta oro miel/carbón, SoftAP concurrente (`192.168.4.1`), mDNS `http://inbeersa.local`, streaming de `/descargar-datos`, prueba de audio I2S, purga segura de MicroSD y tabla viva de historial. |
 | `src/storage.cpp` | `limpiarRegistrosSD()` y `obtenerUltimosRegistrosJSON()` | Rutinas de lectura segura de cola de registros JSON y reinicialización de almacenamiento. |
 | `src/main.cpp` | Bump a v2.3.0 y actualización de banners | Sincronización de versiones de telemetría y diagnóstico por consola UART. |
 
@@ -82,5 +82,19 @@
 | `src/comms.cpp` | Formateo Fijo `%.1f` / `%.2f` en JSON | `snprintf` directo para serializar telemetría limpia (`"TempI": 24.7`, `"VPD": 0.66`) en `/data.json` y Ubidots. |
 | `src/comms.cpp` | Formateo con `toFixed()` en Tabla Web | Renderizado visual nítido de variables biofísicas en el Dashboard Web sin artefactos flotantes. |
 | `src/comms.cpp` | Ruta `/favicon.ico` con HTTP 204 | Supresión de logs `[WebServer] request handler not found` en consola. |
+
+---
+
+## [v2.3.2] - Preparación para Repositorio Público, Externalización de Secretos y Estructura Estándar
+
+### Cambios Realizados
+| Módulo / Archivo | Cambio Realizado | Justificación |
+|---|---|---|
+| `include/secrets.h.example`<br/>`include/secrets.h` (`.gitignore`) | Externalización de credenciales Wi-Fi, SoftAP y token Ubidots | Evita exposición de claves privadas y tokens en el repositorio público, manteniendo compilación limpia mediante `__has_include`. |
+| `include/config_pins.h`<br/>`src/main.cpp`<br/>`src/comms.cpp` | Macro unificada `FIRMWARE_VERSION` y desacoplo de textos de red fijos | Sincronización de versiones entre banners seriales y footer del Dashboard Web; logs agnósticos al SSID configurado. |
+| `platformio.ini` | Definición de `default_envs = esp32dev` y entorno `[env:calibracion]` | Permite compilar tanto el firmware principal como la utilidad de calibración sin editar manualmente `platformio.ini`. |
+| Estructura del Repositorio | Consolidación en `docs/` y `tools/calibracion/` | Eliminación de archivos obsoletos (`boot.py`), duplicados en raíz (`CHANGELOG_INGENIERIA.md`) y rutas locales absolutas (`*.code-workspace`). |
+| `README.md` | Documentación técnica principal | Guía sobria de arquitectura, pinout, configuración de credenciales y despliegue PlatformIO. |
+
 
 

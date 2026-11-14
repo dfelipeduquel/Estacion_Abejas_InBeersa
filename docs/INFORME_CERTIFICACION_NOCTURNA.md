@@ -17,7 +17,7 @@ El análisis del log en tiempo real confirma un **éxito operativo del 100% en l
 | **Almacenamiento MicroSD** | **OPERATIVO (100%)** | `[OK] Tarjeta MicroSD detectada exitosamente en Primaria (SCK=14,CS=17)! Bus SPI escalado a 4 MHz.` | La auto-detección corrigió la discrepancia de pines de la PCB. La tarjeta inicializó a 400 kHz y escaló a 4 MHz. |
 | **Sensor DHT22 (Nido)** | **OPERATIVO (100%)** | `Nido Interno : 25.1°C \| 74.3 % \| VPD: 0.82 kPa` | Curva termodinámica viva. El algoritmo psicrométrico de Tetens entrega un VPD ideal de $0.78\text{--}0.86\,\text{kPa}$. |
 | **Bioacústica I2S (INMP441)** | **OPERATIVO (100%)** | `Ráfaga de audio completada (80128 muestras). AudioNormal29...wav` | La tarea en Core 1 con DMA hardware grabó más de 30 ráfagas consecutivas de 5s a 16 kHz sin pérdida de muestras. |
-| **Enlace WiFi Resiliente** | **OPERATIVO (100%)** | `Conectado exitosamente a 'TerraBit'! IP: 192.168.x.x` | El auto-fallback AP levantó `InBeersa-Auxiliar` durante la negociación WPA2 y conmutó a la red de casa en cuanto completó el handshake. |
+| **Enlace WiFi Resiliente** | **OPERATIVO (100%)** | `Conectado exitosamente a red STA! IP: 192.168.x.x` | El auto-fallback AP levantó el hotspot auxiliar durante la negociación WPA2 y conmutó a la red local al completar el handshake. |
 | **Nube IoT (Ubidots)** | **OPERATIVO (100%)** | `[UBIDOTS] Datos telemetrizados con éxito: {"temperatura_interna":25.39,...}` | Publicación MQTT fluida en el broker industrial en cada ventana de 20 segundos. |
 | **Detección Biológica (PIR)** | **OPERATIVO (100%)** | `PIR=1 (Total: 53)` | Conteo acumulado de eventos de piquera funcionando mediante interrupciones asíncronas no bloqueantes. |
 

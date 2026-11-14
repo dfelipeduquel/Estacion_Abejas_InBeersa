@@ -1,7 +1,12 @@
-﻿.pio
+﻿.pio/
 .vscode/
+*.code-workspace
+include/secrets.h
 *.bin
 *.elf
 *.hex
 __pycache__/
 *.pyc
+docs/*.pdf
+.DS_Store
+Thumbs.db
